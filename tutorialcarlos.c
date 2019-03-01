@@ -22,6 +22,9 @@
 #include <libswscale/swscale.h>
 
 #include <SDL.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 // #include <SDL2_log.h>
 
 #ifdef __MINGW32__
@@ -30,6 +33,28 @@
 
 #include <stdio.h>
 // http://dranger.com/ffmpeg/tutorial01.html
+
+int waitForWindowQuit()
+{
+  int quit = 0;
+  SDL_Event event;
+
+  while (!quit)
+  {
+    SDL_WaitEvent(&event);
+
+    switch (event.type)
+    {
+    case SDL_QUIT:
+      quit = 1;
+      break;
+    }
+  }
+
+  SDL_Quit();
+  exit(0);
+  return 0;
+}
 
 void SaveFrame(AVFrame *pFrame, int width, int height, int iFrame)
 {
@@ -69,7 +94,7 @@ int main(int argc, char *argv[])
 
   AVDictionary *optionsDict = NULL;
   struct SwsContext *sws_ctx = NULL;
-  struct SwsContext *sws_ctx_yuv = NULL;
+  // struct SwsContext *sws_ctx_yuv = NULL;
 
   // SDL_Overlay *bmp = NULL;
   // SDL_Surface *screen = NULL;
@@ -140,11 +165,11 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-// #ifndef __DARWIN__
-//   screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 24, 0);
-// #else
-//   screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 24, 0);
-// #endif
+  // #ifndef __DARWIN__
+  //   screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 24, 0);
+  // #else
+  //   screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 24, 0);
+  // #endif
 
   // if (!screen)
   // {
@@ -172,26 +197,28 @@ int main(int argc, char *argv[])
           NULL,
           NULL);
 
-  sws_ctx_yuv =
-      sws_getContext(
-          pCodecCtx->width,
-          pCodecCtx->height,
-          pCodecCtx->pix_fmt,
-          pCodecCtx->width,
-          pCodecCtx->height,
-          AV_PIX_FMT_YUV420P,
-          SWS_BILINEAR,
-          NULL,
-          NULL,
-          NULL);
+  // sws_ctx_yuv =
+  //     sws_getContext(
+  //         pCodecCtx->width,
+  //         pCodecCtx->height,
+  //         pCodecCtx->pix_fmt,
+  //         pCodecCtx->width,
+  //         pCodecCtx->height,
+  //         AV_PIX_FMT_YUV420P,
+  //         SWS_BILINEAR,
+  //         NULL,
+  //         NULL,
+  //         NULL);
 
   // Assign appropriate parts of buffer to image planes in pFrameRGB
   // Note that pFrameRGB is an AVFrame, but AVFrame is a superset
   // of AVPicture
   avpicture_fill((AVPicture *)pFrameRGB, buffer, AV_PIX_FMT_RGB24,
                  pCodecCtx->width, pCodecCtx->height);
+
   SDL_Window *window = SDL_CreateWindow("My SDL Empty Window",
-                                        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, 0);
+                                        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, pCodecCtx->width / 2, pCodecCtx->height / 2, 0);
+
   SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
 
   // Read frames and save first five frames to disk
@@ -219,20 +246,47 @@ int main(int argc, char *argv[])
             pFrameRGB->linesize);
 
         // Save the frame to disk
-        if (++i <= 5)
+        // if (++i <= 5)
+        // {
+        //   printf("save image!\n");
+        //   SaveFrame(pFrameRGB, pCodecCtx->width, pCodecCtx->height, i);
+        // }
+        // else
+        // {
+        //   break;
+        // }
+
+        int req_format = STBI_rgb_alpha;
+        int width, height, orig_format;
+        unsigned char *data = stbi_load("./test.png", &width, &height, &orig_format, req_format);
+        if (data == NULL)
         {
-          printf("save image!\n");
-          SaveFrame(pFrameRGB, pCodecCtx->width, pCodecCtx->height, i);
+          SDL_Log("Loading image failed: %s", stbi_failure_reason());
+          exit(1);
+        }
+
+        int depth, pitch;
+        Uint32 pixel_format;
+        if (req_format == STBI_rgb)
+        {
+          depth = 24;
+          pitch = 3 * width; // 3 bytes per pixel * pixels per row
+          pixel_format = SDL_PIXELFORMAT_RGB24;
         }
         else
-        {
-          break;
+        { // STBI_rgb_alpha (RGBA)
+          depth = 32;
+          pitch = 4 * width;
+          pixel_format = SDL_PIXELFORMAT_RGBA32;
         }
-        SDL_Surface *surface;
-            surface = SDL_CreateRGBSurface(0, pCodecCtx->width, pCodecCtx->height, 32, 0, 0, 0, 0);
-        SDL_LockSurface(surface);
 
-        SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 255, 0, 0));
+        // SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormatFrom((void *)data, width, height, depth, pitch, pixel_format);
+
+        SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormatFrom(pFrameRGB->data[0], pCodecCtx->width, pCodecCtx->height, 24, pFrameRGB->linesize[0], SDL_PIXELFORMAT_RGB24);
+
+        // SDL_LockSurface(surface);
+
+        // SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 255, 0, 0));
 
         // AVPicture pict;
         // pict.data[0] = bmp->pixels[0];
@@ -254,11 +308,20 @@ int main(int argc, char *argv[])
 
         // SDL_memset(surface->pixels, 0, surface->h * surface->pitch);
 
-        SDL_UnlockSurface(surface);
+        // SDL_UnlockSurface(surface);
 
         SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
+
+        SDL_Rect DestR;
+        DestR.x = 0;
+        DestR.y = pCodecCtx->height / 2;
+        DestR.w = pCodecCtx->width/2;
+        DestR.h = pCodecCtx->height/2;
+
+        SDL_RenderCopy(renderer, texture, NULL, &DestR);
         SDL_RenderPresent(renderer);
+
+        // waitForWindowQuit();
 
         // rect.x = 0;
         // rect.y = 0;
