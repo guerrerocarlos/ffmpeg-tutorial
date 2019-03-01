@@ -22,7 +22,7 @@
 #include <libswscale/swscale.h>
 
 #include <SDL.h>
-#include <SDL_thread.h>
+// #include <SDL2_log.h>
 
 #ifdef __MINGW32__
 #undef main /* Prevents SDL from overriding main() */
@@ -71,9 +71,9 @@ int main(int argc, char *argv[])
   struct SwsContext *sws_ctx = NULL;
   struct SwsContext *sws_ctx_yuv = NULL;
 
-  SDL_Overlay *bmp = NULL;
-  SDL_Surface *screen = NULL;
-  SDL_Rect rect;
+  // SDL_Overlay *bmp = NULL;
+  // SDL_Surface *screen = NULL;
+  // SDL_Rect rect;
   SDL_Event event;
 
   if (argc < 2)
@@ -88,6 +88,8 @@ int main(int argc, char *argv[])
   {
     fprintf(stderr, "Couldn't initialize SDL: %s", SDL_GetError());
   }
+
+  // SDL_LogSetAllPriority(SDL_LOG_PRIORITY_WARN);
 
   // Open video file
   if (avformat_open_input(&pFormatCtx, argv[1], NULL, NULL) != 0)
@@ -138,16 +140,16 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  #ifndef __DARWIN__
-    screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 24, 0);
-  #else
-    screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 24, 0);
-  #endif
+// #ifndef __DARWIN__
+//   screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 24, 0);
+// #else
+//   screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 24, 0);
+// #endif
 
-  if (!screen)
-  {
-    fprintf(stderr, "SDL: could not set video mode - exiting");
-  }
+  // if (!screen)
+  // {
+  //   fprintf(stderr, "SDL: could not set video mode - exiting");
+  // }
 
   // IMG: Determine required buffer size and allocate buffer
   numBytes = avpicture_get_size(AV_PIX_FMT_RGB24, pCodecCtx->width,
@@ -155,7 +157,7 @@ int main(int argc, char *argv[])
   buffer = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
 
   // Video: Allocate a place to put our YUV image on that screen
-  bmp = SDL_CreateYUVOverlay(pCodecCtx->width, pCodecCtx->height, SDL_YV12_OVERLAY, screen);
+  // bmp = SDL_CreateYUVOverlay(pCodecCtx->width, pCodecCtx->height, SDL_YV12_OVERLAY, screen);
 
   sws_ctx =
       sws_getContext(
@@ -188,6 +190,9 @@ int main(int argc, char *argv[])
   // of AVPicture
   avpicture_fill((AVPicture *)pFrameRGB, buffer, AV_PIX_FMT_RGB24,
                  pCodecCtx->width, pCodecCtx->height);
+  SDL_Window *window = SDL_CreateWindow("My SDL Empty Window",
+                                        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, 0);
+  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
 
   // Read frames and save first five frames to disk
   i = 0;
@@ -223,34 +228,43 @@ int main(int argc, char *argv[])
         {
           break;
         }
+        SDL_Surface *surface;
+            surface = SDL_CreateRGBSurface(0, pCodecCtx->width, pCodecCtx->height, 32, 0, 0, 0, 0);
+        SDL_LockSurface(surface);
 
-        // SDL_LockYUVOverlay(bmp);
+        SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 255, 0, 0));
 
-        AVPicture pict;
-        pict.data[0] = bmp->pixels[0];
-        pict.data[1] = bmp->pixels[2];
-        pict.data[2] = bmp->pixels[1];
+        // AVPicture pict;
+        // pict.data[0] = bmp->pixels[0];
+        // pict.data[1] = bmp->pixels[2];
+        // pict.data[2] = bmp->pixels[1];
 
-        pict.linesize[0] = bmp->pitches[0];
-        pict.linesize[1] = bmp->pitches[2];
-        pict.linesize[2] = bmp->pitches[1];
+        // pict.linesize[0] = bmp->pitches[0];
+        // pict.linesize[1] = bmp->pitches[2];
+        // pict.linesize[2] = bmp->pitches[1];
 
-        sws_scale(
-            sws_ctx_yuv,
-            (uint8_t const *const *)pFrame->data,
-            pFrame->linesize,
-            0,
-            pCodecCtx->height,
-            pict.data,
-            pict.linesize);
+        // sws_scale(
+        //     sws_ctx_yuv,
+        //     (uint8_t const *const *)pFrame->data,
+        //     pFrame->linesize,
+        //     0,
+        //     pCodecCtx->height,
+        //     pict.data,
+        //     pict.linesize);
 
-        // SDL_UnlockYUVOverlay(bmp);
+        // SDL_memset(surface->pixels, 0, surface->h * surface->pitch);
 
-        rect.x = 0;
-        rect.y = 0;
-        rect.w = pCodecCtx->width;
-        rect.h = pCodecCtx->height;
-        SDL_DisplayYUVOverlay(bmp, &rect);
+        SDL_UnlockSurface(surface);
+
+        SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        SDL_RenderPresent(renderer);
+
+        // rect.x = 0;
+        // rect.y = 0;
+        // rect.w = pCodecCtx->width;
+        // rect.h = pCodecCtx->height;
+        // SDL_DisplayYUVOverlay(bmp, &rect);
       }
     }
 
@@ -258,6 +272,7 @@ int main(int argc, char *argv[])
     av_free_packet(&packet);
     SDL_PollEvent(&event);
   }
+  fprintf(stderr, "SDL Error?: %s", SDL_GetError());
 
   // Free the RGB image
   av_free(buffer);
