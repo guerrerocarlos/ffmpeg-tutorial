@@ -685,7 +685,7 @@ int queue_picture(VideoState *is, AVFrame *pFrame, double pts) {
 
     SDL_LockYUVOverlay(vp->bmp);
 
-    //dst_pix_fmt = PIX_FMT_YUV420P;
+    //dst_pix_fmt = AV_PIX_FMT_YUV420P;
     /* point pict at the queue */
 
     pict.data[0] = vp->bmp->pixels[0];
@@ -884,7 +884,7 @@ int stream_component_open(VideoState *is, int stream_index) {
             is->video_st->codec->pix_fmt,
             is->video_st->codec->width,
             is->video_st->codec->height,
-            AV_PIX_FMT_YUV420P,
+            AV_AV_PIX_FMT_YUV420P,
             SWS_BILINEAR,
             NULL,
             NULL,

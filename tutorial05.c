@@ -647,7 +647,7 @@ int stream_component_open(VideoState *is, int stream_index) {
             is->video_st->codec->pix_fmt,
             is->video_st->codec->width,
             is->video_st->codec->height,
-            PIX_FMT_YUV420P, 
+            AV_PIX_FMT_YUV420P, 
             SWS_BILINEAR, 
             NULL, 
             NULL, 

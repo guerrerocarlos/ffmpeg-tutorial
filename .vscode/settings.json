@@ -4,6 +4,7 @@
         "stdio.h": "c",
         "sdl.h": "c",
         "cstdlib": "c",
-        "iostream": "c"
+        "iostream": "c",
+        "avformat.h": "c"
     }
 }

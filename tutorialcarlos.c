@@ -21,6 +21,11 @@
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
 
+// #include "libavutil/common.h"
+// #include "libavcodec/avcodec.h"
+// #include "libavformat/avformat.h"
+// #include "libswscale/swscale.h"
+
 #include <SDL.h>
 
 #define STB_IMAGE_IMPLEMENTATION
